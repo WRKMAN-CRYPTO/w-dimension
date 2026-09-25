@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#05070d"><title>W Dimension</title>
 <style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05070d;color:#eaf2ff;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none}.hud{position:fixed;left:14px;right:14px;top:max(14px,env(safe-area-inset-top));display:flex;justify-content:space-between;pointer-events:none;text-shadow:0 1px 8px #000}.title{font-size:12px;letter-spacing:.18em}.sub{font-size:10px;opacity:.55;margin-top:4px}.buttons{pointer-events:auto;display:flex;gap:7px}button{border:1px solid #ffffff28;background:#0b1020bb;color:#dce9ff;border-radius:999px;padding:8px 11px;font:11px inherit;backdrop-filter:blur(8px)}.readout{position:fixed;left:14px;bottom:max(14px,env(safe-area-inset-bottom));font-size:10px;opacity:.55;pointer-events:none}</style></head>
-<body><canvas id="c"></canvas><div class="hud"><div><div class="title">W DIMENSION / 0</div><div class="sub">XYZ is where you are · W is what happened to you</div></div><div class="buttons"><button id="pause">PAUSE</button><button id="reset">RESET</button></div></div><div class="readout" id="r"></div>
+<body><canvas id="c"></canvas><div class="hud"><div><div class="title">W DIMENSION / 0</div><div class="sub">XYZ is where you are · W is what happened to you</div></div><div class="buttons"><button id="lens">W LENS</button><button id="pause">PAUSE</button><button id="reset">RESET</button></div></div><div class="readout" id="r"></div>
 <script>
-const c=document.getElementById('c'),x=c.getContext('2d',{alpha:false}); let W,H,D,run=true,t=0;
+const c=document.getElementById('c'),x=c.getContext('2d',{alpha:false}); let W,H,D,run=true,t=0,lens=false;
 const N=72,L=90,A=[]; const TAU=Math.PI*2;
 function resize(){D=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;c.width=W*D;c.height=H*D;x.setTransform(D,0,0,D,0,0)}
 addEventListener('resize',resize);resize();
@@ -24,10 +24,11 @@ function step(a){
 }
 function draw(){
  x.fillStyle='rgba(5,7,13,.20)';x.fillRect(0,0,W,H);x.globalCompositeOperation='lighter';
- for(let j=0;j<A.length;j++){const a=A[j],q=a.trail;if(q.length<2)continue;for(let i=1;i<q.length;i++){const p=q[i-1],n=q[i],age=i/q.length;const hue=195+110*(n[2]+1)/2;x.strokeStyle='hsla('+hue+',88%,'+(55+18*age)+'%,'+(.02+.34*age*age)+')';x.lineWidth=.45+1.35*age;x.beginPath();x.moveTo(p[0],p[1]);x.lineTo(n[0],n[1]);x.stroke()}x.fillStyle='hsla('+(195+110*(a.w+1)/2)+',95%,78%,.9)';x.beginPath();x.arc(a.x,a.y,1.25,0,TAU);x.fill()}
+ for(let j=0;j<A.length;j++){const a=A[j],q=a.trail;if(q.length<2)continue;for(let i=1;i<q.length;i++){const p=q[i-1],n=q[i],age=i/q.length;const hue=lens?((n[2]+1)*180):210;x.strokeStyle='hsla('+hue+','+(lens?95:78)+'%,'+(55+18*age)+'%,'+(.02+.34*age*age)+')';x.lineWidth=.45+1.35*age;x.beginPath();x.moveTo(p[0],p[1]);x.lineTo(n[0],n[1]);x.stroke()}x.fillStyle=lens?'hsla('+((a.w+1)*180)+',100%,76%,.95)':'hsla(210,90%,78%,.9)';x.beginPath();x.arc(a.x,a.y,1.25,0,TAU);x.fill()}
  x.globalCompositeOperation='source-over';document.getElementById('r').textContent=N+' agents · deterministic · tick '+t;
 }
 function loop(){if(run){for(const a of A)step(a);t++}draw();requestAnimationFrame(loop)}
+document.getElementById('lens').onclick=e=>{lens=!lens;e.target.textContent=lens?'W LENS ✓':'W LENS'};
 document.getElementById('pause').onclick=e=>{run=!run;e.target.textContent=run?'PAUSE':'PLAY'};
 document.getElementById('reset').onclick=reset;reset();x.fillStyle='#05070d';x.fillRect(0,0,W,H);loop();
 </script></body></html>
