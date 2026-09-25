@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#05070d"><title>W Dimension</title>
 <style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05070d;color:#eaf2ff;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none}.hud{position:fixed;left:14px;right:14px;top:max(14px,env(safe-area-inset-top));display:flex;justify-content:space-between;pointer-events:none;text-shadow:0 1px 8px #000}.title{font-size:12px;letter-spacing:.18em}.sub{font-size:10px;opacity:.55;margin-top:4px}.buttons{pointer-events:auto;display:flex;gap:7px}button{border:1px solid #ffffff28;background:#0b1020bb;color:#dce9ff;border-radius:999px;padding:8px 11px;font:11px inherit;backdrop-filter:blur(8px)}.readout{position:fixed;left:14px;bottom:max(14px,env(safe-area-inset-bottom));font-size:10px;opacity:.55;pointer-events:none}</style></head>
-<body><canvas id="c"></canvas><div class="hud"><div><div class="title">W DIMENSION / 0</div><div class="sub">XYZ is where you are · W is what happened to you</div></div><div class="buttons"><button id="stim">FIELD</button><button id="drum">DRUM ✓</button><button id="lens">W LENS</button><button id="pause">PAUSE</button><button id="reset">RESET</button></div></div><div class="readout" id="r"></div><div id="events" style="position:fixed;right:14px;bottom:max(14px,env(safe-area-inset-bottom));font-size:9px;line-height:1.45;opacity:.6;text-align:right;pointer-events:none"></div>
+<body><canvas id="c"></canvas><div class="hud"><div><div class="title">W DIMENSION / 0</div><div class="sub">XYZ is where you are · W is what happened to you</div></div><div class="buttons"><button id="wall">OBSTACLE</button><button id="stim">FIELD</button><button id="drum">DRUM ✓</button><button id="lens">W LENS</button><button id="pause">PAUSE</button><button id="reset">RESET</button></div></div><div class="readout" id="r"></div><div id="events" style="position:fixed;right:14px;bottom:max(14px,env(safe-area-inset-bottom));font-size:9px;line-height:1.45;opacity:.6;text-align:right;pointer-events:none"></div>
 <script>
-const c=document.getElementById('c'),x=c.getContext('2d',{alpha:false}); let W,H,D,run=true,t=0,lens=false,stimLens=false,drum=true; const EVENTS=[]; const ACTIVE=new Map();
+const c=document.getElementById('c'),x=c.getContext('2d',{alpha:false}); let W,H,D,run=true,t=0,lens=false,stimLens=false,drum=true,wallMode=false; const OB=[]; const EVENTS=[]; const ACTIVE=new Map();
 const N=72,L=90,A=[]; const TAU=Math.PI*2;
 function resize(){D=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;c.width=W*D;c.height=H*D;x.setTransform(D,0,0,D,0,0)}
 addEventListener('resize',resize);resize();
-function reset(){A.length=0;t=0;EVENTS.length=0;ACTIVE.clear();for(let i=0;i<N;i++){let w=(i/(N-1))*2-1, a=i*2.399963;A.push({x:W/2,y:H/2,z:0,w,ang:a,vx:0,vy:0,trail:[]})}}
+function reset(){A.length=0;t=0;EVENTS.length=0;ACTIVE.clear();OB.length=0;for(let i=0;i<N;i++){let w=(i/(N-1))*2-1, a=i*2.399963;A.push({x:W/2,y:H/2,z:0,w,ang:a,vx:0,vy:0,trail:[]})}}
 function step(a){
   // deterministic field: same place + different W => different response.
   const nx=(a.x-W/2)/Math.min(W,H), ny=(a.y-H/2)/Math.min(W,H);
@@ -19,6 +19,8 @@ function step(a){
   const speed=1.15 + .55*(.5+.5*Math.sin(a.w*5.3));
   a.vx=a.vx*.91+Math.cos(a.ang)*speed*.09; a.vy=a.vy*.91+Math.sin(a.ang)*speed*.09;
   a.x+=a.vx; a.y+=a.vy; a.z=Math.sin(a.w*3+t*.004);
+  // Solid circular obstacles. Collision changes only the physical trajectory.
+  for(const o of OB){let dx=a.x-o.x,dy=a.y-o.y,dd=dx*dx+dy*dy,rr=o.r+2;if(dd<rr*rr){let d=Math.sqrt(dd)||1,nx=dx/d,ny=dy/d,dot=a.vx*nx+a.vy*ny;a.x=o.x+nx*rr;a.y=o.y+ny*rr;if(dot<0){a.vx-=1.85*dot*nx;a.vy-=1.85*dot*ny;a.ang=Math.atan2(a.vy,a.vx)}}}
   const m=28;if(a.x<m||a.x>W-m){a.ang=Math.PI-a.ang;a.x=Math.max(m,Math.min(W-m,a.x))}if(a.y<m||a.y>H-m){a.ang=-a.ang;a.y=Math.max(m,Math.min(H-m,a.y))}
   a.trail.push([a.x,a.y,a.w]);if(a.trail.length>L)a.trail.shift();
 }
@@ -46,13 +48,16 @@ function drawMarkers(){
     x.strokeStyle='rgba(255,255,255,.38)';x.lineWidth=.7;x.beginPath();x.arc(mx,my,rad,0,TAU);x.stroke();
   }x.restore();
 }
+function drawObstacles(){x.save();x.globalCompositeOperation='source-over';for(const o of OB){x.fillStyle='rgba(225,232,244,.10)';x.strokeStyle='rgba(225,232,244,.55)';x.lineWidth=1;x.beginPath();x.arc(o.x,o.y,o.r,0,TAU);x.fill();x.stroke();}x.restore()}
 function draw(){
  x.fillStyle='rgba(5,7,13,.20)';x.fillRect(0,0,W,H);x.globalCompositeOperation='lighter';
  for(let j=0;j<A.length;j++){const a=A[j],q=a.trail;if(q.length<2)continue;for(let i=1;i<q.length;i++){const p=q[i-1],n=q[i],age=i/q.length;const hue=stimLens?(30+((a.stim+2)/4)*260):(lens?((n[2]+1)*180):210);x.strokeStyle='hsla('+hue+','+(lens?95:78)+'%,'+(55+18*age)+'%,'+(.02+.34*age*age)+')';x.lineWidth=.45+1.35*age;x.beginPath();x.moveTo(p[0],p[1]);x.lineTo(n[0],n[1]);x.stroke()}x.fillStyle=stimLens?'hsla('+(30+((a.stim+2)/4)*260)+',100%,76%,.95)':(lens?'hsla('+((a.w+1)*180)+',100%,76%,.95)':'hsla(210,90%,78%,.9)');x.beginPath();x.arc(a.x,a.y,1.25,0,TAU);x.fill()}
- x.globalCompositeOperation='source-over';drawMarkers();document.getElementById('r').textContent=N+' agents · deterministic · tick '+t;
+ x.globalCompositeOperation='source-over';drawObstacles();drawMarkers();document.getElementById('r').textContent=N+' agents · deterministic · tick '+t;
  document.getElementById('events').innerHTML=lens?(EVENTS.length?'W CONVERGENCE<br>'+EVENTS.map(e=>'t'+e.tick+' · '+e.i+'+'+e.j+' · W '+e.w.toFixed(2)).join('<br>'):'W CONVERGENCE<br>watching…'):'';
 }
 function loop(){if(run){for(const a of A)step(a);t++;observe()}draw();requestAnimationFrame(loop)}
+document.getElementById('wall').onclick=e=>{wallMode=!wallMode;e.target.textContent=wallMode?'OBSTACLE ✓':'OBSTACLE'};
+c.addEventListener('pointerdown',e=>{if(!wallMode)return;const q=c.getBoundingClientRect(),px=e.clientX-q.left,py=e.clientY-q.top;OB.push({x:px,y:py,r:24});});
 document.getElementById('stim').onclick=e=>{stimLens=!stimLens;if(stimLens){lens=false;document.getElementById('lens').textContent='W LENS'}e.target.textContent=stimLens?'FIELD ✓':'FIELD'};
 document.getElementById('drum').onclick=e=>{drum=!drum;e.target.textContent=drum?'DRUM ✓':'DRUM ×'};
 document.getElementById('lens').onclick=e=>{lens=!lens;if(lens){stimLens=false;document.getElementById('stim').textContent='FIELD'}e.target.textContent=lens?'W LENS ✓':'W LENS'};
