@@ -1,0 +1,88 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#05070d"><title>Builder-P1 · Square Maze</title>
+<style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05070d;color:#eaf2ff;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none}.top{position:fixed;left:10px;right:10px;top:max(10px,env(safe-area-inset-top));display:flex;gap:8px;align-items:flex-start;pointer-events:none}.brand{flex:1}.title{font-size:12px;letter-spacing:.14em}.sub{font-size:8px;opacity:.6;margin-top:4px}.controls{pointer-events:auto;display:flex;gap:5px}button{border:1px solid #ffffff28;background:#0b1020e8;color:#eaf2ff;border-radius:12px;padding:8px;font:9px inherit;min-height:36px}.legend{position:fixed;left:50%;top:57px;transform:translateX(-50%);font-size:8px;opacity:.55;white-space:nowrap}.trace{position:fixed;left:10px;right:10px;bottom:max(64px,calc(env(safe-area-inset-bottom) + 54px));height:72px;background:#070b14d9;border:1px solid #ffffff18;border-radius:12px;padding:5px;pointer-events:none}.trace canvas{position:static;width:100%;height:100%}.stats{position:fixed;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr 1fr;gap:8px}.card{background:#070b14e8;border:1px solid #ffffff18;border-radius:12px;padding:8px}.head{font-size:10px;letter-spacing:.12em}.line{font-size:8px;opacity:.72;margin-top:3px;white-space:nowrap}.live{color:#f0b44d}.null{color:#8eb7ff}</style></head><body>
+<canvas id="c"></canvas><div class="top"><div class="brand"><div class="title">BUILDER-P1 / SQUARE MAZE</div><div class="sub">pheromone fork · winner prediction: OPEN</div></div><div class="controls"><button id="speed">1×</button><button id="pause">PAUSE</button><button id="reset">RESET</button></div></div><div class="legend" id="boot">BOOTING…</div>
+<div class="trace"><canvas id="trace"></canvas></div><div class="stats"><div class="card"><div class="head live">W-LIVE</div><div class="line" id="sl"></div></div><div class="card"><div class="head null">W-NULL</div><div class="line" id="sn"></div></div></div>
+<script>
+window.addEventListener('error',e=>{const b=document.getElementById('boot');b.textContent='BOOT ERROR · '+(e.message||'unknown')+' · line '+(e.lineno||'?');b.style.color='#ff7b72';b.style.opacity=1});
+const c=document.getElementById('c'),ctx=c.getContext('2d',{alpha:false});let W,H,D,run=true,tick=0,speed=1,seed=0xB017D00D;const N=320,TAU=Math.PI*2,GX=28,GY=14;let live,nullw,samples=[],firstCrossover=null,prevDelta=0;const PGX=56,PGY=28,PH_DECAY=.9985,PH_DROP=.035,PH_TURN=.010;
+// Builder-P1: seeded perfect maze. Walls are generated, not hand-authored.
+const MAZE_SEED=0x4D415A45,MC=12,MR=9,MX=.18,MY=.08,MW=.72,MH=.84,WT=.008;
+function mazeRng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let q=Math.imul(s^s>>>15,1|s);q=q+Math.imul(q^q>>>7,61|q)^q;return((q^q>>>14)>>>0)/4294967296}}
+function generateMaze(){
+ const R=mazeRng(MAZE_SEED),n=MC*MR,seen=new Uint8Array(n),open=Array.from({length:n},()=>[0,0,0,0]),stack=[Math.floor(MR/2)*MC],dirs=[[0,-1,0,2],[1,0,1,3],[0,1,2,0],[-1,0,3,1]];
+ seen[stack[0]]=1;
+ while(stack.length){const cur=stack[stack.length-1],x=cur%MC,y=(cur/MC)|0,c=[];
+  for(const d of dirs){const nx=x+d[0],ny=y+d[1];if(nx>=0&&nx<MC&&ny>=0&&ny<MR&&!seen[ny*MC+nx])c.push(d)}
+  if(!c.length){stack.pop();continue}
+  const d=c[(R()*c.length)|0],nx=x+d[0],ny=y+d[1],ni=ny*MC+nx;open[cur][d[2]]=1;open[ni][d[3]]=1;seen[ni]=1;stack.push(ni)
+ }
+ return open
+}
+const MAZE=generateMaze(),WALLS=[];
+function addWall(x,y,w,h){WALLS.push([x,y,w,h])}
+(function buildWalls(){
+ const cw=MW/MC,ch=MH/MR;
+ // Outer frame, with entrance and exit openings at the middle row.
+ addWall(MX,MY,MW,WT);addWall(MX,MY+MH-WT,MW,WT);
+ const er=Math.floor(MR/2),ey=MY+er*ch;
+ addWall(MX,MY,WT,er*ch);addWall(MX,ey+ch,WT,MY+MH-(ey+ch));
+ addWall(MX+MW-WT,MY,WT,er*ch);addWall(MX+MW-WT,ey+ch,WT,MY+MH-(ey+ch));
+ for(let y=0;y<MR;y++)for(let x=0;x<MC;x++){const i=y*MC+x,cx=MX+x*cw,cy=MY+y*ch;
+  if(x<MC-1&&!MAZE[i][1])addWall(cx+cw-WT/2,cy,WT,ch);
+  if(y<MR-1&&!MAZE[i][2])addWall(cx,cy+ch-WT/2,cw,WT);
+ }
+})();
+function hitRect(x,y){for(const r of WALLS)if(x>=r[0]&&x<=r[0]+r[2]&&y>=r[1]&&y<=r[1]+r[3])return r;return null}
+function collide(a,ox,oy){
+ const r=hitRect(a.x,a.y);if(!r)return false;
+ const wasX=ox<r[0]||ox>r[0]+r[2],wasY=oy<r[1]||oy>r[1]+r[3];a.x=ox;a.y=oy;
+ if(wasX&&!wasY)a.ang=Math.PI-a.ang;else if(wasY&&!wasX)a.ang=-a.ang;else a.ang+=Math.PI;return true
+}
+function mazeRouteVerified(){
+ const start=Math.floor(MR/2)*MC,target=Math.floor(MR/2)*MC+(MC-1),seen=new Uint8Array(MC*MR),q=[start];seen[start]=1;
+ for(let h=0;h<q.length;h++){const i=q[h];if(i===target)return true;const x=i%MC,y=(i/MC)|0;
+  const next=[[0,-1,0],[1,0,1],[0,1,2],[-1,0,3]];
+  for(const d of next)if(MAZE[i][d[2]]){const nx=x+d[0],ny=y+d[1],ni=ny*MC+nx;if(!seen[ni]){seen[ni]=1;q.push(ni)}}
+ }return false
+}
+function exteriorBypassExists(){
+ // Flood physical free space, but forbid entering the maze interior. If source can reach sink,
+ // an exterior highway exists around the maze frame.
+ const nx=196,ny=168,seen=new Uint8Array(nx*ny),q=[[.10,.5]],dx=.96/(nx-1),dy=.84/(ny-1);
+ const key=(x,y)=>{const ix=Math.max(0,Math.min(nx-1,Math.round((x-.02)/.96*(nx-1)))),iy=Math.max(0,Math.min(ny-1,Math.round((y-.08)/.84*(ny-1))));return iy*nx+ix};
+ seen[key(.10,.5)]=1;
+ for(let h=0;h<q.length;h++){const [x,y]=q[h];if((x-.90)*(x-.90)+(y-.5)*(y-.5)<.004)return true;
+  for(const [sx,sy] of [[dx,0],[-dx,0],[0,dy],[0,-dy]]){const xx=x+sx,yy=y+sy;if(xx<.02||xx>.98||yy<.08||yy>.92||hitRect(xx,yy))continue;
+   // Do not allow the bypass checker through the legal maze interior.
+   if(xx>MX+WT&&xx<MX+MW-WT&&yy>MY+WT&&yy<MY+MH-WT)continue;
+   const k=key(xx,yy);if(!seen[k]){seen[k]=1;q.push([xx,yy])}
+  }
+ }return false
+}
+function rngFactory(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let q=Math.imul(s^s>>>15,1|s);q=q+Math.imul(q^q>>>7,61|q)^q;return((q^q>>>14)>>>0)/4294967296}}
+function resize(){D=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;c.width=W*D;c.height=H*D;ctx.setTransform(D,0,0,D,0,0)}addEventListener('resize',resize);resize();
+function makeWorld(causal){const R=rngFactory(seed),agents=[],field=new Float32Array(GX*GY),pher=new Float32Array(PGX*PGY);for(let i=0;i<N;i++){const a=R()*TAU,r=R()*.12;agents.push({x:.16+Math.cos(a)*r,y:.5+Math.sin(a)*r,ang:R()*TAU,v:.0015+R()*.001,energy:0,w:R()*2-1,trail:[],successful:false})}return{causal,agents,field,pher,delivered:0,pickups:0,hits:0,wMean:0,transitions:0,lastBand:0}}
+function reset(){tick=0;samples=[];firstCrossover=null;prevDelta=0;live=makeWorld(true);nullw=makeWorld(false);sample()}reset();
+function sample(){const d=live.delivered-nullw.delivered;samples.push({tick,l:live.delivered,n:nullw.delivered,d});if(firstCrossover===null&&prevDelta<=0&&d>0&&tick>0)firstCrossover=tick;prevDelta=d}
+function drawTrace(){
+ const tc=document.getElementById('trace'),r=tc.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);if(tc.width!==Math.round(r.width*dpr)||tc.height!==Math.round(r.height*dpr)){tc.width=Math.round(r.width*dpr);tc.height=Math.round(r.height*dpr)}
+ const g=tc.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);const w=r.width,h=r.height;g.clearRect(0,0,w,h);g.strokeStyle='rgba(255,255,255,.12)';g.beginPath();g.moveTo(0,h/2);g.lineTo(w,h/2);g.stroke();
+ if(samples.length>1){let m=1;for(const q of samples)m=Math.max(m,Math.abs(q.d));g.strokeStyle='rgba(240,180,77,.9)';g.beginPath();for(let i=0;i<samples.length;i++){const x=i/(samples.length-1)*w,y=h/2-samples[i].d/m*(h*.42);if(i)g.lineTo(x,y);else g.moveTo(x,y)}g.stroke()}
+ g.fillStyle='rgba(234,242,255,.72)';g.font='8px ui-monospace,monospace';const last=samples[samples.length-1]||{d:0};g.fillText('Δ LIVE−NULL '+(last.d>=0?'+':'')+last.d.toFixed(0)+' · sample/1000t'+(firstCrossover?' · cross '+firstCrossover+'t':''),6,10)
+}
+function fi(x,y){const gx=Math.max(0,Math.min(GX-1,(x*GX)|0)),gy=Math.max(0,Math.min(GY-1,(y*GY)|0));return gy*GX+gx}
+function pfi(x,y){const gx=Math.max(0,Math.min(PGX-1,(x*PGX)|0)),gy=Math.max(0,Math.min(PGY-1,(y*PGY)|0));return gy*PGX+gx}
+function pherTurn(world,a){const gx=Math.max(1,Math.min(PGX-2,(a.x*PGX)|0)),gy=Math.max(1,Math.min(PGY-2,(a.y*PGY)|0)),p=world.pher;const dx=p[gy*PGX+gx+1]-p[gy*PGX+gx-1],dy=p[(gy+1)*PGX+gx]-p[(gy-1)*PGX+gx];if(Math.abs(dx)+Math.abs(dy)<.0001)return 0;const target=Math.atan2(dy,dx),d=((target-a.ang+Math.PI*3)%TAU)-Math.PI;return Math.max(-PH_TURN,Math.min(PH_TURN,d*.012))}
+function enforceMazeBounds(a){
+ if(a.y<MY+WT){a.y=MY+WT;a.ang=Math.abs(a.ang);return true}
+ if(a.y>MY+MH-WT){a.y=MY+MH-WT;a.ang=-Math.abs(a.ang);return true}
+ return false
+}
+function step(world){const f=world.field,p=world.pher;for(let i=0;i<f.length;i++)f[i]*=.994;for(let i=0;i<p.length;i++)p[i]*=PH_DECAY;let sum=0;for(let i=0;i<N;i++){const a=world.agents[i],local=f[fi(a.x,a.y)],dxs=a.x-.10,dys=a.y-.5,dxk=a.x-.90,dyk=a.y-.5,ds=dxs*dxs+dys*dys,dk=dxk*dxk+dyk*dyk;if(ds<.0064&&a.energy<1){a.energy=1;world.pickups++}if(dk<.0064&&a.energy>.2){world.delivered+=a.energy;a.energy=0;a.successful=true}f[fi(a.x,a.y)]+=(a.energy>.2?.018:-.004)+Math.sin(a.ang+a.w*3)*.002;a.w=Math.tanh(a.w*.997+local*.018+(a.energy>.2?.006:-.002));const goal=a.energy>.2?0:Math.PI,d=((goal-a.ang+Math.PI*3)%TAU)-Math.PI,base=d*.0025+Math.sin(i*12.9898+tick*.011)*.004,wTurn=world.causal?Math.tanh(local*2.2+a.w)*.028:0,pTurn=pherTurn(world,a);a.ang+=base+wTurn+pTurn;const ox=a.x,oy=a.y;a.x+=Math.cos(a.ang)*a.v;a.y+=Math.sin(a.ang)*a.v;if(collide(a,ox,oy))world.hits++;if(enforceMazeBounds(a))world.hits++;if(a.x<.02||a.x>.98){a.ang=Math.PI-a.ang;a.x=Math.max(.02,Math.min(.98,a.x))}if(a.successful&&a.energy<.2)p[pfi(a.x,a.y)]=Math.min(1,p[pfi(a.x,a.y)]+PH_DROP);if(ds<.0064&&a.energy<1)a.successful=false;a.trail.push([a.x,a.y]);if(a.trail.length>14)a.trail.shift();sum+=a.w}world.wMean=sum/N;const band=Math.max(0,Math.min(8,Math.floor((world.wMean+1)*4.5)));if(band!==world.lastBand){world.transitions++;world.lastBand=band}}
+function circle(x,y,r,fill,stroke){ctx.beginPath();ctx.arc(x,y,r,0,TAU);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.stroke()}}
+function drawWorld(world,y0,h){const px=x=>x*W,py=y=>y0+y*h;ctx.save();ctx.beginPath();ctx.rect(0,y0,W,h);ctx.clip();ctx.fillStyle='#05070d';ctx.fillRect(0,y0,W,h);const pcw=W/PGX,pch=h/PGY;for(let gy=0;gy<PGY;gy++)for(let gx=0;gx<PGX;gx++){const pv=world.pher[gy*PGX+gx];if(pv>.01){ctx.fillStyle='rgba(95,255,165,'+Math.min(.16,pv*.13)+')';ctx.fillRect(gx*pcw,y0+gy*pch,pcw+1,pch+1)}}const cw=W/GX,ch=h/GY;for(let gy=0;gy<GY;gy++)for(let gx=0;gx<GX;gx++){const v=world.field[gy*GX+gx];if(Math.abs(v)<.012)continue;const al=Math.min(.16,Math.abs(v)*.07);ctx.fillStyle=v>0?'rgba(240,180,77,'+al+')':'rgba(91,137,205,'+al+')';ctx.fillRect(gx*cw,y0+gy*ch,cw+1,ch+1)}ctx.fillStyle='rgba(220,230,245,.12)';ctx.strokeStyle='rgba(220,230,245,.32)';ctx.lineWidth=1;for(const r of WALLS){ctx.fillRect(px(r[0]),py(r[1]),r[2]*W,r[3]*h);ctx.strokeRect(px(r[0]),py(r[1]),r[2]*W,r[3]*h)}circle(px(.10),py(.5),Math.min(W,h)*.045,'rgba(240,180,77,.10)','rgba(240,180,77,.55)');circle(px(.90),py(.5),Math.min(W,h)*.045,'rgba(142,183,255,.08)','rgba(142,183,255,.5)');for(const a of world.agents){if(a.trail.length>1){ctx.strokeStyle=a.energy>.2?'rgba(240,180,77,.16)':'rgba(180,210,255,.07)';ctx.beginPath();ctx.moveTo(px(a.trail[0][0]),py(a.trail[0][1]));for(let k=1;k<a.trail.length;k++)ctx.lineTo(px(a.trail[k][0]),py(a.trail[k][1]));ctx.stroke()}circle(px(a.x),py(a.y),a.energy>.2?1.5:1,a.energy>.2?'#f0b44d':'#b8d4ff')}ctx.restore()}
+function draw(){drawTrace();ctx.fillStyle='#05070d';ctx.fillRect(0,0,W,H);const top=78,bottom=100,avail=Math.max(100,H-top-bottom),half=avail/2;drawWorld(live,top,half);drawWorld(nullw,top+half,half);document.getElementById('sl').textContent='del '+live.delivered.toFixed(0)+' · hits '+live.hits+' · W '+live.wMean.toFixed(3);document.getElementById('sn').textContent='del '+nullw.delivered.toFixed(0)+' · hits '+nullw.hits+' · W '+nullw.wMean.toFixed(3)}
+function loop(){if(run){for(let s=0;s<speed;s++){step(live);step(nullw);tick++;if(tick%1000===0)sample()}}draw();requestAnimationFrame(loop)}
+const routeOK=mazeRouteVerified(),bypass=exteriorBypassExists(),hardBounds=(MY+WT>.08&&MY+MH-WT<.92);
+document.getElementById('boot').textContent=!routeOK?'APPARATUS ERROR · generated maze disconnected':bypass?'APPARATUS ERROR · exterior bypass detected':!hardBounds?'APPARATUS ERROR · hard bounds missing':'MAZE '+MAZE_SEED.toString(16).toUpperCase()+' · route verified · HARD SEALED · PHEROMONES';document.getElementById('pause').onclick=e=>{run=!run;e.target.textContent=run?'PAUSE':'PLAY'};document.getElementById('speed').onclick=e=>{speed=speed===1?4:speed===4?16:1;e.target.textContent=speed+'×'};document.getElementById('reset').onclick=reset;loop();
+</script></body></html>
