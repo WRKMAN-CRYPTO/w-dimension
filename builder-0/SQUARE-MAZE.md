@@ -105,3 +105,19 @@ Observed 0.8 delivery counts are therefore contaminated and are not maze-navigat
 - the UI reports `exterior sealed` only when the maze graph is connected and the exterior bypass test fails to find a highway
 
 The original pre-registered prediction remains unchanged: **W-NULL wins by brute force.**
+
+
+## Builder-0.8.2 — hard simulation seal
+
+Field observation of 0.8.1 suggested agents could exploit a microscopic numerical/rendering seam along the bottom boundary, travel laterally outside the intended maze, and re-enter near the sink. The coarse exterior flood validator did not detect this path.
+
+0.8.2 stops relying on visual rectangle contact for the maze's top and bottom containment. After every movement/collision step, agent state is constrained directly to the maze's vertical domain:
+
+- minimum legal y = `MY + WT`
+- maximum legal y = `MY + MH - WT`
+- crossing either limit clamps the agent back inside and reflects its vertical heading component
+- these hard constraints are simulation rules, independent of canvas pixels and rectangle seams
+
+The generated maze, maze seed, agent mechanics, entrance, exit, W behavior, and pre-registered hypothesis are otherwise unchanged.
+
+0.8.1 remains an apparatus-development run and is not counted as maze evidence. The UI reports `HARD SEALED` when the graph route, exterior check, and hard-bound configuration all pass.
