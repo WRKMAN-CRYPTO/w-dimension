@@ -44,7 +44,8 @@ function step(world){
  for(const a of world.agents){
    const local=sample(f,a.x,a.y);
    // Source and sink are identical in both worlds.
-   const dxs=a.x-0.10,dys=a.y-0.5,dxk=a.x-0.90,dyk=a.y-0.5;\n   const ds=dxs*dxs+dys*dys, dk=dxk*dxk+dyk*dyk;
+   const dxs=a.x-0.10,dys=a.y-0.5,dxk=a.x-0.90,dyk=a.y-0.5;
+   const ds=dxs*dxs+dys*dys, dk=dxk*dxk+dyk*dyk;
    if(ds<.0064&&a.energy<1){a.energy=1;world.pickups++}
    if(dk<.0064&&a.energy>.2){world.delivered+=a.energy;a.energy=0}
    // Every agent may write W. In NULL the same field exists and is visible, but has no causal steering effect.
