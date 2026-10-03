@@ -16,7 +16,17 @@ canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none}.top{posi
 <body>
 <canvas id="c"></canvas>
 <div class="top"><div class="brand"><div class="title">BUILDER-0 / W FIELD</div><div class="sub">same seed · same agents · one causal difference</div></div><div class="controls"><button id="speed">1×</button><button id="pause">PAUSE</button><button id="reset">RESET</button></div></div>
-<div class="legend">SOURCE → agents carry energy → SINK · W-LIVE above / W-NULL below</div>
+<div class="legend" id="boot">BOOTING…</div>
+<script>
+window.addEventListener('error',function(e){
+  var b=document.getElementById('boot');
+  if(b){b.textContent='BOOT ERROR · '+(e.message||'unknown')+' · line '+(e.lineno||'?');b.style.color='#ff7b72';b.style.opacity='1';}
+});
+window.addEventListener('unhandledrejection',function(e){
+  var b=document.getElementById('boot');
+  if(b){b.textContent='PROMISE ERROR · '+String(e.reason||'unknown');b.style.color='#ff7b72';b.style.opacity='1';}
+});
+</script>
 <div class="stats"><div class="card"><div class="head live">W-LIVE</div><div class="line" id="sl"></div></div><div class="card"><div class="head null">W-NULL</div><div class="line" id="sn"></div></div></div>
 <script>
 const c=document.getElementById('c'),ctx=c.getContext('2d',{alpha:false});
@@ -88,7 +98,7 @@ function draw(){
  document.getElementById('sl').textContent='delivered '+live.delivered.toFixed(1)+' · W '+live.wMean.toFixed(3)+' · shifts '+live.transitions;
  document.getElementById('sn').textContent='delivered '+nullw.delivered.toFixed(1)+' · W '+nullw.wMean.toFixed(3)+' · shifts '+nullw.transitions;
 }
-function loop(){if(run){for(let s=0;s<speed;s++){step(live);step(nullw);tick++}}draw();requestAnimationFrame(loop)}
+function loop(){if(run){for(let s=0;s<speed;s++){step(live);step(nullw);tick++}}draw();requestAnimationFrame(loop)}\ndocument.getElementById('boot').textContent='SOURCE → agents carry energy → SINK · W-LIVE above / W-NULL below';
 document.getElementById('pause').onclick=e=>{run=!run;e.target.textContent=run?'PAUSE':'PLAY'};
 document.getElementById('speed').onclick=e=>{speed=speed===1?4:speed===4?16:1;e.target.textContent=speed+'×'};
 document.getElementById('reset').onclick=reset;
