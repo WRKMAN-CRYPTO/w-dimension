@@ -46,3 +46,21 @@ Collision response is now face-aware:
 - ambiguous corner entry reverses direction
 
 Agents still receive no obstacle sensing, map, avoidance rule, route information, or maze-specific behavior. The original pre-registered prediction remains unchanged.
+
+
+## Apparatus correction — 0.7.2
+
+The 0.7/0.7.1 obstacle layout was rejected before hypothesis testing because it was a sequence of barriers rather than a meaningful maze.
+
+0.7.2 replaces the layout with a rectilinear branching field containing:
+
+- staggered gates
+- upper and lower route choices
+- square pockets and false approaches
+- dead-end shelves
+- a horizontally centered source and sink
+- geometry mirrored around the horizontal centerline where practical to avoid a simple top/bottom gift
+
+A grid flood-fill now checks source-to-sink connectivity at boot. The UI reports `route verified` only when a traversable path exists.
+
+The face-aware collision correction from 0.7.1 remains. Agents still receive no obstacle awareness or maze-specific behavior. The original NULL hypothesis remains pre-registered and unchanged.
