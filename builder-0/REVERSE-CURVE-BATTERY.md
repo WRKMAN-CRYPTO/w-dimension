@@ -21,3 +21,18 @@ Prior results:
 - 0.3 straight walls: LIVE 0 / NULL 100, mean Δ -172.2, median -173.0
 
 Question: does reversing the arcs preserve, erase, or reverse the W-LIVE advantage?
+
+
+## Recorded result — 2026-10-03
+
+Field run completed on the mobile harness:
+
+- LIVE wins: 77
+- ties: 1
+- NULL wins: 22
+- mean Δ (LIVE − NULL): +9.2 delivered energy
+- median Δ: +10.0 delivered energy
+
+This opposite-half curved-wall result is frozen as Builder-0.4.
+
+Interpretation is deliberately limited: this result shows that the strong Builder-0.2 advantage does not survive unchanged when the selected half of each circle is reversed. It does not by itself establish a general curvature law.
