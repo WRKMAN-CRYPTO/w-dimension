@@ -121,3 +121,20 @@ Field observation of 0.8.1 suggested agents could exploit a microscopic numerica
 The generated maze, maze seed, agent mechanics, entrance, exit, W behavior, and pre-registered hypothesis are otherwise unchanged.
 
 0.8.1 remains an apparatus-development run and is not counted as maze evidence. The UI reports `HARD SEALED` when the graph route, exterior check, and hard-bound configuration all pass.
+
+
+## Builder-0.9 — crossover trace instrumentation
+
+Builder-0.9 freezes the 0.8.2 maze and agent mechanics and adds observation only.
+
+Motivation: in the first hard-sealed 0.8.2 field run, W-NULL reportedly opened an approximately 40–0 delivery lead, then W-LIVE caught it, crossed over, and maintained a small lead. A later screenshot showed LIVE 324 vs NULL 310. This observation motivates measuring performance as a time series rather than only a final count.
+
+Instrumentation:
+
+- sample cumulative LIVE and NULL deliveries every 1,000 simulation ticks
+- compute Δ = LIVE − NULL at each sample
+- render Δ over time around a zero baseline
+- record the first sampled negative/non-positive → positive crossover
+- reset clears samples and crossover state
+
+No steering, W dynamics, collision rules, maze geometry, maze seed, agent seed, source/sink behavior, or hard-seal rules are changed by this version.
