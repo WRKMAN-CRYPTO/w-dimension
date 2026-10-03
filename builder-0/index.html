@@ -98,7 +98,8 @@ function draw(){
  document.getElementById('sl').textContent='delivered '+live.delivered.toFixed(1)+' · W '+live.wMean.toFixed(3)+' · shifts '+live.transitions;
  document.getElementById('sn').textContent='delivered '+nullw.delivered.toFixed(1)+' · W '+nullw.wMean.toFixed(3)+' · shifts '+nullw.transitions;
 }
-function loop(){if(run){for(let s=0;s<speed;s++){step(live);step(nullw);tick++}}draw();requestAnimationFrame(loop)}\ndocument.getElementById('boot').textContent='SOURCE → agents carry energy → SINK · W-LIVE above / W-NULL below';
+function loop(){if(run){for(let s=0;s<speed;s++){step(live);step(nullw);tick++}}draw();requestAnimationFrame(loop)}
+document.getElementById('boot').textContent='SOURCE → agents carry energy → SINK · W-LIVE above / W-NULL below';
 document.getElementById('pause').onclick=e=>{run=!run;e.target.textContent=run?'PAUSE':'PLAY'};
 document.getElementById('speed').onclick=e=>{speed=speed===1?4:speed===4?16:1;e.target.textContent=speed+'×'};
 document.getElementById('reset').onclick=reset;
