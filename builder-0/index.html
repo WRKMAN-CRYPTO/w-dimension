@@ -51,7 +51,8 @@ function step(world){
  const f=world.field;
  for(let i=0;i<f.length;i++)f[i]*=.994;
  let sumW=0;
- for(const a of world.agents){
+ for(let i=0;i<world.agents.length;i++){
+   const a=world.agents[i];
    const local=sample(f,a.x,a.y);
    // Source and sink are identical in both worlds.
    const dxs=a.x-0.10,dys=a.y-0.5,dxk=a.x-0.90,dyk=a.y-0.5;
