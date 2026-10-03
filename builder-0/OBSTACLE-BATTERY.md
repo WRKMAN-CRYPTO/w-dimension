@@ -15,3 +15,16 @@ Protocol:
 - compare wins, mean Δ, and median Δ against the unobstructed Builder-0.1 baseline
 
 Frozen unobstructed baseline: LIVE 0, NULL 100, ties 0, mean Δ -767.1, median Δ -768.5.
+
+
+## Recorded result — 2026-10-03
+
+Field run completed on the mobile harness:
+
+- LIVE wins: 100
+- ties: 0
+- NULL wins: 0
+- mean Δ (LIVE − NULL): +173.9 delivered energy
+- median Δ: +176.0 delivered energy
+
+This centered curved-wall result is frozen as the Builder-0.2 baseline.
