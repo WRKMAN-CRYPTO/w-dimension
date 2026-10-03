@@ -20,3 +20,16 @@ Prior frozen results:
 - Builder-0.2 curved walls: LIVE 100, NULL 0, mean Δ +173.9, median Δ +176.0
 
 Question: does W-LIVE retain its advantage when curvature is removed?
+
+
+## Recorded result — 2026-10-03
+
+Field run completed on the mobile harness:
+
+- LIVE wins: 0
+- ties: 0
+- NULL wins: 100
+- mean Δ (LIVE − NULL): -172.2 delivered energy
+- median Δ: -173.0 delivered energy
+
+This centered straight-wall result is frozen as the Builder-0.3 baseline.
