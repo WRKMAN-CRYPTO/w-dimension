@@ -86,3 +86,22 @@ A separate graph traversal verifies that the entrance cell reaches the exit cell
 Agents receive no maze graph, wall sensor, pathfinding rule, avoidance behavior, or navigation hint. Face-aware collision physics from 0.7.1 remains.
 
 The original pre-registered prediction remains: **W-NULL wins by brute force.**
+
+
+## Builder-0.8.1 — seal the exterior highway
+
+The first 0.8 field observation exposed another apparatus flaw: although the generated structure was a real maze, its outer frame sat inside the simulation bounds. Agents could travel around the top or bottom of the maze and reach the sink without traversing it.
+
+Observed 0.8 delivery counts are therefore contaminated and are not maze-navigation evidence.
+
+0.8.1 changes only the apparatus boundary:
+
+- maze top is coincident with the simulation top boundary (y = 0.08)
+- maze bottom is coincident with the simulation bottom boundary (y = 0.92)
+- the generated internal maze and fixed maze seed remain unchanged
+- legal entrance remains on the left middle row
+- legal exit remains on the right middle row
+- a separate physical-space flood test searches specifically for a source-to-sink route that stays outside the maze interior
+- the UI reports `exterior sealed` only when the maze graph is connected and the exterior bypass test fails to find a highway
+
+The original pre-registered prediction remains unchanged: **W-NULL wins by brute force.**
