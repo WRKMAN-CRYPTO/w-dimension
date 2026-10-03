@@ -23,3 +23,20 @@ At every angle:
 0° is mathematically equivalent to the original x > cx half selection. 180° is equivalent to x < cx, subject to floating-point boundary cases.
 
 The purpose is to measure whether LIVE-minus-NULL performance varies systematically with wall orientation rather than merely comparing hand-picked geometries.
+
+
+## Recorded result — 2026-10-03
+
+Field run completed on the mobile harness:
+
+| Angle | LIVE / NULL / ties | Mean Δ | Median Δ |
+| --- | --- | ---: | ---: |
+| 0° | 100 / 0 / 0 | +173.9 | +176.0 |
+| 30° | 100 / 0 / 0 | +175.1 | +172.5 |
+| 60° | 100 / 0 / 0 | +145.5 | +147.0 |
+| 90° | 100 / 0 / 0 | +96.2 | +97.5 |
+| 120° | 100 / 0 / 0 | +57.5 | +57.0 |
+| 150° | 76 / 23 / 1 | +9.2 | +9.5 |
+| 180° | 77 / 22 / 1 | +9.2 | +10.0 |
+
+The result is frozen as Builder-0.5. The response is structured but should not yet be described as a general law. In this fixed curved environment, causal W steering's relative performance changes strongly with retained-semicircle orientation.
