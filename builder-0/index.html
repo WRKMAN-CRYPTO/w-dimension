@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#05070d"><title>Builder-0 · W Field</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05070d;color:#eaf2ff;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none}.top{position:fixed;left:10px;right:10px;top:max(10px,env(safe-area-inset-top));display:flex;gap:8px;align-items:flex-start;pointer-events:none}
+.brand{flex:1;min-width:0;text-shadow:0 1px 8px #000}.title{font-size:12px;letter-spacing:.16em}.sub{font-size:9px;opacity:.58;margin-top:3px}
+.controls{pointer-events:auto;display:flex;gap:5px}button{border:1px solid #ffffff28;background:#0b1020d9;color:#eaf2ff;border-radius:12px;padding:8px 10px;font:9px inherit;min-height:36px}
+.stats{position:fixed;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr 1fr;gap:8px;pointer-events:none}
+.card{background:#070b14d9;border:1px solid #ffffff18;border-radius:12px;padding:8px;backdrop-filter:blur(8px);min-width:0}.head{font-size:10px;letter-spacing:.12em}.line{font-size:9px;opacity:.7;margin-top:3px;white-space:nowrap}.live{color:#f0b44d}.null{color:#8eb7ff}
+.legend{position:fixed;left:50%;top:54px;transform:translateX(-50%);font-size:8px;opacity:.5;pointer-events:none;white-space:nowrap}
+@media(max-width:390px){.title{font-size:10px}.sub{font-size:8px}.controls{gap:3px}button{padding:7px 7px}.line{font-size:8px}}
+</style></head>
+<body>
+<canvas id="c"></canvas>
+<div class="top"><div class="brand"><div class="title">BUILDER-0 / W FIELD</div><div class="sub">same seed · same agents · one causal difference</div></div><div class="controls"><button id="speed">1×</button><button id="pause">PAUSE</button><button id="reset">RESET</button></div></div>
+<div class="legend">SOURCE → agents carry energy → SINK · W-LIVE above / W-NULL below</div>
+<div class="stats"><div class="card"><div class="head live">W-LIVE</div><div class="line" id="sl"></div></div><div class="card"><div class="head null">W-NULL</div><div class="line" id="sn"></div></div></div>
+<script>
+const c=document.getElementById('c'),ctx=c.getContext('2d',{alpha:false});
+let W,H,D,run=true,tick=0,speed=1,seed=0xB017D00D;
+const N=320,TAU=Math.PI*2,GRID_X=28,GRID_Y=14;
+let live,nullw;
+
+function rngFactory(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let q=Math.imul(s^s>>>15,1|s);q=q+Math.imul(q^q>>>7,61|q)^q;return((q^q>>>14)>>>0)/4294967296}}
+function resize(){D=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;c.width=W*D;c.height=H*D;ctx.setTransform(D,0,0,D,0,0)} addEventListener('resize',resize);resize();
+
+function makeWorld(causal){
+ const R=rngFactory(seed),agents=[],field=new Float32Array(GRID_X*GRID_Y);
+ for(let i=0;i<N;i++){const a=R()*TAU,r=R()*.12;agents.push({x:.16+Math.cos(a)*r,y:.5+Math.sin(a)*r,ang:R()*TAU,v:.0015+R()*.001,energy:0,w:R()*2-1,trail:[]})}
+ return{causal,agents,field,delivered:0,pickups:0,transitions:0,lastBand:0,bandRuns:new Uint32Array(9),wMean:0};
+}
+function reset(){tick=0;live=makeWorld(true);nullw=makeWorld(false)} reset();
+
+function fi(x,y){const gx=Math.max(0,Math.min(GRID_X-1,(x*GRID_X)|0)),gy=Math.max(0,Math.min(GRID_Y-1,(y*GRID_Y)|0));return gy*GRID_X+gx}
+function sample(f,x,y){return f[fi(x,y)]}
+function deposit(world,a,amount){world.field[fi(a.x,a.y)]+=amount}
+function step(world){
+ const f=world.field;
+ for(let i=0;i<f.length;i++)f[i]*=.994;
+ let sumW=0;
+ for(const a of world.agents){
+   const local=sample(f,a.x,a.y);
+   // Source and sink are identical in both worlds.
+   const ds=(a.x-.10)**2+(a.y-.5)**2, dk=(a.x-.90)**2+(a.y-.5)**2;
+   if(ds<.0064&&a.energy<1){a.energy=1;world.pickups++}
+   if(dk<.0064&&a.energy>.2){world.delivered+=a.energy;a.energy=0}
+   // Every agent may write W. In NULL the same field exists and is visible, but has no causal steering effect.
+   const write=(a.energy>.2?.018:-.004)+Math.sin(a.ang+a.w*3)*.002;
+   deposit(world,a,write);
+   a.w=Math.tanh(a.w*.997+local*.018+(a.energy>.2?.006:-.002));
+   const goal=a.energy>.2?0:Math.PI;
+   let d=((goal-a.ang+Math.PI*3)%TAU)-Math.PI;
+   const base=d*.0025 + Math.sin(i*12.9898+tick*.011)*.004;
+   const wTurn=world.causal ? Math.tanh(local*2.2+a.w)*.028 : 0;
+   a.ang+=base+wTurn;
+   a.x+=Math.cos(a.ang)*a.v;a.y+=Math.sin(a.ang)*a.v;
+   if(a.x<.02||a.x>.98){a.ang=Math.PI-a.ang;a.x=Math.max(.02,Math.min(.98,a.x))}
+   if(a.y<.08||a.y>.92){a.ang=-a.ang;a.y=Math.max(.08,Math.min(.92,a.y))}
+   a.trail.push([a.x,a.y,a.w]);if(a.trail.length>18)a.trail.shift();
+   sumW+=a.w;
+ }
+ world.wMean=sumW/N;
+ const band=Math.max(0,Math.min(8,Math.floor((world.wMean+1)*4.5)));
+ world.bandRuns[band]++;
+ if(band!==world.lastBand){world.transitions++;world.lastBand=band}
+}
+function circle(x,y,r,fill,stroke){ctx.beginPath();ctx.arc(x,y,r,0,TAU);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.stroke()}}
+function drawWorld(world,y0,h,labelColor){
+ const px=x=>x*W,py=y=>y0+y*h;
+ ctx.save();ctx.beginPath();ctx.rect(0,y0,W,h);ctx.clip();
+ ctx.fillStyle='#05070d';ctx.fillRect(0,y0,W,h);
+ // W field heat, observational in NULL and causal in LIVE.
+ const cw=W/GRID_X,ch=h/GRID_Y;
+ for(let gy=0;gy<GRID_Y;gy++)for(let gx=0;gx<GRID_X;gx++){const v=world.field[gy*GRID_X+gx];if(Math.abs(v)<.012)continue;const al=Math.min(.18,Math.abs(v)*.08);ctx.fillStyle=v>0?'rgba(240,180,77,'+al+')':'rgba(91,137,205,'+al+')';ctx.fillRect(gx*cw,y0+gy*ch,cw+1,ch+1)}
+ circle(px(.10),py(.5),Math.min(W,h)*.045,'rgba(240,180,77,.10)','rgba(240,180,77,.55)');
+ circle(px(.90),py(.5),Math.min(W,h)*.045,'rgba(142,183,255,.08)','rgba(142,183,255,.5)');
+ for(const a of world.agents){const q=a.trail;if(q.length>1){ctx.strokeStyle=a.energy>.2?'rgba(240,180,77,.18)':'rgba(180,210,255,.09)';ctx.lineWidth=.65;ctx.beginPath();ctx.moveTo(px(q[0][0]),py(q[0][1]));for(let k=1;k<q.length;k++)ctx.lineTo(px(q[k][0]),py(q[k][1]));ctx.stroke()}circle(px(a.x),py(a.y),a.energy>.2?1.5:1.0,a.energy>.2?'#f0b44d':'#b8d4ff')}
+ ctx.strokeStyle='rgba(255,255,255,.12)';ctx.beginPath();ctx.moveTo(0,y0+h);ctx.lineTo(W,y0+h);ctx.stroke();ctx.restore();
+}
+function draw(){
+ ctx.fillStyle='#05070d';ctx.fillRect(0,0,W,H);
+ const top=78,bottom=100,avail=Math.max(100,H-top-bottom),half=avail/2;
+ drawWorld(live,top,half,'#f0b44d');drawWorld(nullw,top+half,half,'#8eb7ff');
+ document.getElementById('sl').textContent='delivered '+live.delivered.toFixed(1)+' · W '+live.wMean.toFixed(3)+' · shifts '+live.transitions;
+ document.getElementById('sn').textContent='delivered '+nullw.delivered.toFixed(1)+' · W '+nullw.wMean.toFixed(3)+' · shifts '+nullw.transitions;
+}
+function loop(){if(run){for(let s=0;s<speed;s++){step(live);step(nullw);tick++}}draw();requestAnimationFrame(loop)}
+document.getElementById('pause').onclick=e=>{run=!run;e.target.textContent=run?'PAUSE':'PLAY'};
+document.getElementById('speed').onclick=e=>{speed=speed===1?4:speed===4?16:1;e.target.textContent=speed+'×'};
+document.getElementById('reset').onclick=reset;
+loop();
+</script></body></html>
