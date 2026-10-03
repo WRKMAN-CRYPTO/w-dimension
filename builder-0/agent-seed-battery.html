@@ -3,6 +3,7 @@
 <div class="title">BUILDER-1.0 / AGENT SEED BATTERY</div><div class="sub">maze 4D415A45 fixed · mechanics frozen from 0.9<br>100 paired agent seeds · 400,000 ticks · sample every 1,000</div>
 <button id="go">RUN BATTERY</button><div class="status" id="status">ready</div><div class="summary" id="summary"></div><div class="rows" id="rows"></div>
 <script>
+window.addEventListener('error',e=>{const x=document.getElementById('status');if(x){x.textContent='BOOT ERROR · '+(e.message||'unknown')+' · line '+(e.lineno||'?');x.style.color='#ff7b72'}});
 let tick=0,seed=0xB017D00D;const N=320,TAU=Math.PI*2,GX=28,GY=14;let live,nullw;
 // Builder-0.9: seeded perfect maze. Walls are generated, not hand-authored.
 const MAZE_SEED=0x4D415A45,MC=12,MR=9,MX=.18,MY=.08,MW=.72,MH=.84,WT=.008;
@@ -69,7 +70,6 @@ function enforceMazeBounds(a){
  return false
 }
 function step(world){const f=world.field;for(let i=0;i<f.length;i++)f[i]*=.994;let sum=0;for(let i=0;i<N;i++){const a=world.agents[i],local=f[fi(a.x,a.y)],dxs=a.x-.10,dys=a.y-.5,dxk=a.x-.90,dyk=a.y-.5,ds=dxs*dxs+dys*dys,dk=dxk*dxk+dyk*dyk;if(ds<.0064&&a.energy<1){a.energy=1;world.pickups++}if(dk<.0064&&a.energy>.2){world.delivered+=a.energy;a.energy=0}f[fi(a.x,a.y)]+=(a.energy>.2?.018:-.004)+Math.sin(a.ang+a.w*3)*.002;a.w=Math.tanh(a.w*.997+local*.018+(a.energy>.2?.006:-.002));const goal=a.energy>.2?0:Math.PI,d=((goal-a.ang+Math.PI*3)%TAU)-Math.PI,base=d*.0025+Math.sin(i*12.9898+tick*.011)*.004,wTurn=world.causal?Math.tanh(local*2.2+a.w)*.028:0;a.ang+=base+wTurn;const ox=a.x,oy=a.y;a.x+=Math.cos(a.ang)*a.v;a.y+=Math.sin(a.ang)*a.v;if(collide(a,ox,oy))world.hits++;if(enforceMazeBounds(a))world.hits++;if(a.x<.02||a.x>.98){a.ang=Math.PI-a.ang;a.x=Math.max(.02,Math.min(.98,a.x))}a.trail.push([a.x,a.y]);if(a.trail.length>14)a.trail.shift();sum+=a.w}world.wMean=sum/N;const band=Math.max(0,Math.min(8,Math.floor((world.wMean+1)*4.5)));if(band!==world.lastBand){world.transitions++;world.lastBand=band}}
-}draw();requestAnimationFrame(loop)}
 
 const RUNS=100,END=400000,SAMPLE=1000,BASE=0xB017D00D;let running=false;
 function make(seedValue,causal){seed=seedValue>>>0;return makeWorld(causal)}
@@ -84,5 +84,6 @@ function render(rs){
  document.getElementById('summary').innerHTML='<div class="card"><div class="k">ENDPOINT L / N / T</div><div class="v">'+lw+' / '+nw+' / '+tie+'</div></div><div class="card"><div class="k">CROSSOVERS</div><div class="v">'+crosses.length+' / '+rs.length+'</div></div><div class="card"><div class="k">MEAN END Δ</div><div class="v">'+(mean>=0?'+':'')+mean.toFixed(1)+'</div></div><div class="card"><div class="k">MEDIAN CROSS</div><div class="v">'+(crosses.length?crosses.map(r=>r.cross).sort((a,b)=>a-b)[crosses.length>>1]+'t':'—')+'</div></div>';
  document.getElementById('rows').textContent='seed       LIVE NULL  endΔ  minΔ  cross\n'+rs.map(r=>r.seed.toString(16).padStart(8,'0')+'  '+String(r.l.toFixed(0)).padStart(4)+' '+String(r.n.toFixed(0)).padStart(4)+' '+String((r.d>=0?'+':'')+r.d.toFixed(0)).padStart(5)+' '+String(r.min.toFixed(0)).padStart(5)+' '+String(r.cross===null?'—':r.cross).padStart(7)).join('\n')
 }
+document.getElementById('status').textContent='ready · engine loaded';
 document.getElementById('go').onclick=async()=>{if(running)return;running=true;const rs=[];for(let i=0;i<RUNS;i++){document.getElementById('status').textContent='running '+(i+1)+' / '+RUNS+' · '+((i/RUNS)*100).toFixed(0)+'%';rs.push(await runOne(i));render(rs)}document.getElementById('status').textContent='complete · 100 paired seeds × 400,000 ticks';running=false};
 </script></body></html>
